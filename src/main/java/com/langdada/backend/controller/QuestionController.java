@@ -10,7 +10,11 @@ import com.langdada.backend.exception.ErrorCode;
 import com.langdada.backend.exception.ThrowUtils;
 import com.langdada.backend.model.dto.QuestionAddRequest;
 import com.langdada.backend.model.dto.QuestionUpdateRequest;
+import com.langdada.backend.model.entity.App;
 import com.langdada.backend.model.entity.Question;
+import com.langdada.backend.model.entity.User;
+import com.langdada.backend.model.enums.ReviewStatusEnum;
+import com.langdada.backend.service.IAppService;
 import com.langdada.backend.service.IQuestionService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -20,6 +24,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
 import static com.langdada.backend.model.constant.UserConstant.ADMIN_ROLE;
+import static com.langdada.backend.model.constant.UserConstant.USER_LOGIN_STATE;
 
 @Api(tags = "题目管理")
 @RestController
@@ -28,6 +33,9 @@ public class QuestionController {
 
     @Resource
     private IQuestionService questionService;
+
+    @Resource
+    private IAppService appService;
 
     // ==================== 管理员 ====================
 
@@ -91,10 +99,17 @@ public class QuestionController {
 
     @ApiOperation("查看题目（公开）")
     @GetMapping("/user/get/{id}")
-    public BaseResponse<Question> getQuestionFromUser(@PathVariable Long id) {
+    public BaseResponse<Question> getQuestionFromUser(@PathVariable Long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
+        // 未审核应用的题目仅创建者可见
+        App app = appService.getById(question.getAppId());
+        if (app != null && !ReviewStatusEnum.APPROVED.getValue().equals(app.getReviewStatus())) {
+            User loginUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+            ThrowUtils.throwIf(loginUser == null || !app.getUserId().equals(loginUser.getId()),
+                    ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        }
         return ResultUtils.success(question);
     }
 

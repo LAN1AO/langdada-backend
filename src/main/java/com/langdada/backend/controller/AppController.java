@@ -12,6 +12,8 @@ import com.langdada.backend.model.dto.AppAddRequest;
 import com.langdada.backend.model.dto.AppUpdateRequest;
 import com.langdada.backend.model.dto.AppUpdateUserRequest;
 import com.langdada.backend.model.entity.App;
+import com.langdada.backend.model.entity.User;
+import com.langdada.backend.model.enums.ReviewStatusEnum;
 import com.langdada.backend.service.IAppService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -21,6 +23,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
 import static com.langdada.backend.model.constant.UserConstant.ADMIN_ROLE;
+import static com.langdada.backend.model.constant.UserConstant.USER_LOGIN_STATE;
 
 @Api(tags = "应用管理")
 @RestController
@@ -94,6 +97,12 @@ public class AppController {
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         App app = appService.getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
+        // 未审核的应用仅创建者可见
+        if (!ReviewStatusEnum.APPROVED.getValue().equals(app.getReviewStatus())) {
+            User loginUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+            ThrowUtils.throwIf(loginUser == null || !app.getUserId().equals(loginUser.getId()),
+                    ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        }
         return ResultUtils.success(app);
     }
 

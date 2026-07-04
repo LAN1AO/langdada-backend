@@ -10,7 +10,11 @@ import com.langdada.backend.exception.ErrorCode;
 import com.langdada.backend.exception.ThrowUtils;
 import com.langdada.backend.model.dto.ScoringResultAddRequest;
 import com.langdada.backend.model.dto.ScoringResultUpdateRequest;
+import com.langdada.backend.model.entity.App;
 import com.langdada.backend.model.entity.ScoringResult;
+import com.langdada.backend.model.entity.User;
+import com.langdada.backend.model.enums.ReviewStatusEnum;
+import com.langdada.backend.service.IAppService;
 import com.langdada.backend.service.IScoringResultService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -20,6 +24,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
 import static com.langdada.backend.model.constant.UserConstant.ADMIN_ROLE;
+import static com.langdada.backend.model.constant.UserConstant.USER_LOGIN_STATE;
 
 @Api(tags = "评分结果管理")
 @RestController
@@ -28,6 +33,9 @@ public class ScoringResultController {
 
     @Resource
     private IScoringResultService scoringResultService;
+
+    @Resource
+    private IAppService appService;
 
     // ==================== 管理员 ====================
 
@@ -91,10 +99,17 @@ public class ScoringResultController {
 
     @ApiOperation("查看评分结果（公开）")
     @GetMapping("/user/get/{id}")
-    public BaseResponse<ScoringResult> getScoringResultFromUser(@PathVariable Long id) {
+    public BaseResponse<ScoringResult> getScoringResultFromUser(@PathVariable Long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         ScoringResult scoringResult = scoringResultService.getById(id);
         ThrowUtils.throwIf(scoringResult == null, ErrorCode.NOT_FOUND_ERROR);
+        // 未审核应用的评分结果仅创建者可见
+        App app = appService.getById(scoringResult.getAppId());
+        if (app != null && !ReviewStatusEnum.APPROVED.getValue().equals(app.getReviewStatus())) {
+            User loginUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+            ThrowUtils.throwIf(loginUser == null || !app.getUserId().equals(loginUser.getId()),
+                    ErrorCode.NOT_FOUND_ERROR, "评分结果不存在");
+        }
         return ResultUtils.success(scoringResult);
     }
 

@@ -10,6 +10,7 @@ import com.langdada.backend.exception.ErrorCode;
 import com.langdada.backend.exception.ThrowUtils;
 import com.langdada.backend.model.dto.UserAnswerAddRequest;
 import com.langdada.backend.model.dto.UserAnswerUpdateRequest;
+import com.langdada.backend.model.entity.User;
 import com.langdada.backend.model.entity.UserAnswer;
 import com.langdada.backend.service.IUserAnswerService;
 import io.swagger.annotations.Api;
@@ -20,6 +21,7 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 
 import static com.langdada.backend.model.constant.UserConstant.ADMIN_ROLE;
+import static com.langdada.backend.model.constant.UserConstant.USER_LOGIN_STATE;
 
 @Api(tags = "答题记录管理")
 @RestController
@@ -95,6 +97,9 @@ public class UserAnswerController {
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         UserAnswer userAnswer = userAnswerService.getById(id);
         ThrowUtils.throwIf(userAnswer == null, ErrorCode.NOT_FOUND_ERROR);
+        User loginUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+        ThrowUtils.throwIf(loginUser == null || !userAnswer.getUserId().equals(loginUser.getId()),
+                ErrorCode.NO_AUTH_ERROR, "无权查看该答题记录");
         return ResultUtils.success(userAnswer);
     }
 

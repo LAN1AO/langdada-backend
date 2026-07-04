@@ -19,8 +19,8 @@ import com.langdada.backend.model.entity.User;
 import com.langdada.backend.model.enums.UserRoleEnum;
 import com.langdada.backend.model.vo.LoginUserVO;
 import com.langdada.backend.service.IUserService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -39,6 +39,8 @@ import static com.langdada.backend.model.constant.UserConstant.*;
  */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
+
+    private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -78,29 +80,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1. 校验
-        if (StrUtil.hasBlank(userAccount, userPassword)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
-        }
-        if (userAccount.length() < minAccountLen) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号错误");
-        }
-        if (userPassword.length() < minPasswordLen) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码错误");
-        }
-        // 2. 加密
-        String encryptPassword = getEncryptPassword(userPassword);
-        // 查询用户是否存在
+        ThrowUtils.throwIf(StrUtil.hasBlank(userAccount, userPassword), ErrorCode.PARAMS_ERROR, "参数为空");
+        ThrowUtils.throwIf(userAccount.length() < minAccountLen, ErrorCode.PARAMS_ERROR, "账号错误");
+        ThrowUtils.throwIf(userPassword.length() < minPasswordLen, ErrorCode.PARAMS_ERROR, "密码错误");
+        // 2. 查询用户
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUserAccount, userAccount);
-        queryWrapper.eq(User::getUserPassword, encryptPassword);
         User user = this.getOne(queryWrapper);
-        // 用户被 ban
-        ThrowUtils.throwIf(user.getUserRole().equals(UserRoleEnum.BAN.getValue()), ErrorCode.NO_AUTH_ERROR, "用户已被禁用");
-        // 用户不存在
         ThrowUtils.throwIf(user == null, ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
-        // 3. 记录用户的登录态
+        // 3. 验证密码 (BCrypt)
+        ThrowUtils.throwIf(!matchesPassword(userPassword, user.getUserPassword()), ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
+        // 4. 检查是否被封禁
+        ThrowUtils.throwIf(UserRoleEnum.BAN.getValue().equals(user.getUserRole()), ErrorCode.NO_AUTH_ERROR, "用户已被禁用");
+        // 5. 记录用户的登录态
         request.getSession().setAttribute(USER_LOGIN_STATE, user);
-        // 4. 获得脱敏后的用户信息
+        // 6. 获得脱敏后的用户信息
         return this.getLoginUserVO(user);
     }
 
@@ -119,9 +113,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public String getEncryptPassword(String userPassword) {
-        // 盐值，混淆密码
-        final String SALT = "lang";
-        return DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+        return PASSWORD_ENCODER.encode(userPassword);
+    }
+
+    /**
+     * 验证密码是否匹配
+     */
+    private boolean matchesPassword(String rawPassword, String encodedPassword) {
+        return PASSWORD_ENCODER.matches(rawPassword, encodedPassword);
     }
 
     @Override
