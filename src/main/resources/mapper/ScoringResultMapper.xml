@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.langdada.backend.mapper.ScoringResultMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.langdada.backend.model.entity.ScoringResult">
+        <id column="id" property="id" />
+        <result column="resultName" property="resultName" />
+        <result column="resultDesc" property="resultDesc" />
+        <result column="resultPicture" property="resultPicture" />
+        <result column="resultProp" property="resultProp" />
+        <result column="resultScoreRange" property="resultScoreRange" />
+        <result column="appId" property="appId" />
+        <result column="userId" property="userId" />
+        <result column="createTime" property="createTime" />
+        <result column="updateTime" property="updateTime" />
+        <result column="isDelete" property="isDelete" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, resultName, resultDesc, resultPicture, resultProp, resultScoreRange, appId, userId, createTime, updateTime, isDelete
+    </sql>
+
+</mapper>

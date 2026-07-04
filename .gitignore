@@ -1,0 +1,30 @@
+# ===== Maven =====
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ===== IDE =====
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+*~
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== 临时文件 =====
+*.tmp
+*.bak
+*.swp
