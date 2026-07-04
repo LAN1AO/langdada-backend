@@ -115,8 +115,17 @@ public class QuestionController {
 
     @ApiOperation("按应用 ID 分页查询题目（公开）")
     @GetMapping("/user/list/{appId}")
-    public BaseResponse<Page<Question>> listQuestionsByApp(@PathVariable Long appId, PageRequest pageRequest) {
+    public BaseResponse<Page<Question>> listQuestionsByApp(@PathVariable Long appId, PageRequest pageRequest,
+                                                           HttpServletRequest request) {
         ThrowUtils.throwIf(appId == null, ErrorCode.PARAMS_ERROR);
+        // 未审核应用的题目仅创建者可见
+        App app = appService.getById(appId);
+        ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        if (!ReviewStatusEnum.APPROVED.getValue().equals(app.getReviewStatus())) {
+            User loginUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+            ThrowUtils.throwIf(loginUser == null || !app.getUserId().equals(loginUser.getId()),
+                    ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        }
         long current = pageRequest.getCurrent();
         long pageSize = pageRequest.getPageSize();
         Page<Question> page = questionService.listQuestionsByApp(appId, current, pageSize);
